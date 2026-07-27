@@ -57,7 +57,7 @@
       </div>
 
       <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-        <span>🎯</span> 残り試合の全条件パターン算出
+        <span>🎯</span> 残り試合の全条件パターン算出 (+10点〜-10点差 全計算)
       </h2>
       <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
         <div class="flex flex-wrap items-center gap-4 mb-4">
@@ -162,10 +162,10 @@
       ],
       teams: ["チームA", "チームB", "チームC", "チームD"],
       matchesMap: {
-        "チームA_チームB": { homeScore: 25, awayScore: 20, played: true },
-        "チームC_チームD": { homeScore: 18, awayScore: 18, played: true },
-        "チームA_チームC": { homeScore: 22, awayScore: 19, played: true },
-        "チームB_チームD": { homeScore: 30, awayScore: 10, played: true }
+        "チームA_チームB": { homeScore: , awayScore: , played: true },
+        "チームC_チームD": { homeScore: , awayScore: , played: true },
+        "チームA_チームC": { homeScore: , awayScore: , played: true },
+        "チームB_チームD": { homeScore: , awayScore: , played: true }
       }
     };
 
@@ -223,7 +223,6 @@
         };
       });
 
-      // 1. 全試合集計
       matchesList.filter(m => m.played).forEach(m => {
         const h = m.home, a = m.away;
         if (!stats[h] || !stats[a]) return;
@@ -248,7 +247,6 @@
 
       Object.values(stats).forEach(s => s.allGd = s.allGf - s.allGa);
 
-      // 2. 25%未満除外の判定 (ルールが有効な場合のみ)
       let excludedTeams = [];
       if (state.rules.use25Rule) {
         Object.values(stats).forEach(s => {
@@ -264,7 +262,6 @@
         });
       }
 
-      // 3. 除外後集計
       matchesList.filter(m => m.played).forEach(m => {
         const h = m.home, a = m.away;
         if (!stats[h] || !stats[a]) return;
@@ -280,12 +277,10 @@
       });
       Object.values(stats).forEach(s => s.subGd = s.subGf - s.subGa);
 
-      // 4. カスタム動的ソート
       let sorted = Object.values(stats).sort((a, b) => {
         for (let rule of state.priorityOrder) {
           if (rule.id === "pts" && b.pts !== a.pts) return b.pts - a.pts;
           
-          // 25%ルールが無効のときは subGd/subGf を無視（またはallGdと同じに扱う）
           if (state.rules.use25Rule) {
             if (rule.id === "subGd" && b.subGd !== a.subGd) return b.subGd - a.subGd;
             if (rule.id === "subGf" && b.subGf !== a.subGf) return b.subGf - a.subGf;
@@ -310,11 +305,9 @@
       return { sorted, excludedCount: excludedTeams.length };
     }
 
-    // --- ページ1 表示更新 ---
     function updatePage1() {
       const { sorted: standings, excludedCount } = calculateStandings();
       
-      // 1. バナーの表示（25%ルールの適用状態）
       const banner = document.getElementById('rule-status-banner');
       if (!state.rules.use25Rule) {
         banner.className = "mb-6 p-4 rounded-lg border border-gray-300 bg-gray-100 text-gray-700 font-bold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-sm";
@@ -345,7 +338,6 @@
         `;
       }
 
-      // 2. 順位表の描画
       const tbody = document.getElementById('standings-table-body');
       tbody.innerHTML = '';
 
@@ -359,7 +351,6 @@
           noteBadge = '<span class="text-xs bg-red-500 text-white font-bold px-2 py-0.5 rounded">25%未満(対戦除外)</span>';
         }
 
-        // 表示の調整（25%ルール有効時は除外後の数値もカッコ書きで併記）
         const displayGf = state.rules.use25Rule ? `${s.allGf} <span class="text-xs text-gray-400">(${s.subGf})</span>` : s.allGf;
         const displayGa = state.rules.use25Rule ? `${s.allGa} <span class="text-xs text-gray-400">(${s.subGa})</span>` : s.allGa;
         const displayGdVal = s.allGd > 0 ? '+' + s.allGd : s.allGd;
@@ -388,7 +379,51 @@
       calculateAllConditions();
     }
 
-    // --- 全点数・点数差シミュレーション ---
+    // --- 連続する点数差の範囲を文章化する関数 ---
+    function formatDiffRangeText(diffs) {
+      if (!diffs || diffs.length === 0) return null;
+
+      diffs.sort((a, b) => b - a); // 降順 (+10, +9, ... -10)
+      const maxDiff = Math.max(...diffs);
+      const minDiff = Math.min(...diffs);
+
+      // 範囲文字列の作成
+      let maxText = "";
+      let minText = "";
+
+      if (maxDiff === 10) {
+        maxText = "+10点差以上";
+      } else if (maxDiff > 0) {
+        maxText = `+${maxDiff}点差`;
+      } else if (maxDiff === 0) {
+        maxText = "引き分け";
+      } else {
+        maxText = `${Math.abs(maxDiff)}点差の敗戦`;
+      }
+
+      if (minDiff === -10) {
+        minText = "-10点差以上の大敗";
+      } else if (minDiff > 0) {
+        minText = `+${minDiff}点差`;
+      } else if (minDiff === 0) {
+        minText = "引き分け";
+      } else {
+        minText = `${Math.abs(minDiff)}点差の敗戦`;
+      }
+
+      if (maxDiff === minDiff) {
+        return maxText;
+      }
+
+      // 「+5点差以上の勝利」などの判定
+      if (maxDiff === 10 && minDiff > 0) return `+${minDiff}点差以上の勝利`;
+      if (maxDiff === 10 && minDiff === 0) return `勝利 または 引き分け`;
+      if (maxDiff < 0 && minDiff === -10) return `${Math.abs(maxDiff)}点差以上の敗戦`;
+
+      return `${maxText} ～ ${minText}`;
+    }
+
+    // --- 全点数差（+10〜-10）シミュレーション ---
     function calculateAllConditions() {
       const targetTeam = document.getElementById('calc-team-select').value;
       const resultDiv = document.getElementById('calc-result');
@@ -413,53 +448,45 @@
         return;
       }
 
-      let scenarioMap = [];
-      const testDiffs = [
-        { diff: 5, label: "5点差以上で大勝 (+5点差)" },
-        { diff: 3, label: "3点差で勝利 (+3点差)" },
-        { diff: 2, label: "2点差で勝利 (+2点差)" },
-        { diff: 1, label: "1点差で接戦勝ち (+1点差)" },
-        { diff: 0, label: "引き分け (0点差)" },
-        { diff: -1, label: "1点差で接戦負け (-1点差)" },
-        { diff: -2, label: "2点差で敗戦 (-2点差)" },
-        { diff: -5, label: "5点差以上で大敗 (-5点差)" }
-      ];
+      // +10点差から-10点差までの21パターンを1点刻みで全計算
+      let scoreDiffResults = []; // { diff: 5, rank: 1 }
+      let rankToDiffs = {};
 
-      testDiffs.forEach(sc => {
+      for (let diff = 10; diff >= -10; diff--) {
         let testMatches = JSON.parse(JSON.stringify(matchList));
         
         myUnplayed.forEach(m => {
           let tm = testMatches.find(x => x.key === m.key);
           tm.played = true;
           const baseScore = 20;
-          if (sc.diff >= 0) {
-            if (tm.home === targetTeam) { tm.homeScore = baseScore + sc.diff; tm.awayScore = baseScore; }
-            else { tm.homeScore = baseScore; tm.awayScore = baseScore + sc.diff; }
+          if (diff >= 0) {
+            if (tm.home === targetTeam) { tm.homeScore = baseScore + diff; tm.awayScore = baseScore; }
+            else { tm.homeScore = baseScore; tm.awayScore = baseScore + diff; }
           } else {
-            const lossVal = Math.abs(sc.diff);
+            const lossVal = Math.abs(diff);
             if (tm.home === targetTeam) { tm.homeScore = baseScore; tm.awayScore = baseScore + lossVal; }
             else { tm.homeScore = baseScore + lossVal; tm.awayScore = baseScore; }
           }
         });
 
         const rank = calculateStandings(testMatches).sorted.findIndex(s => s.team === targetTeam) + 1;
-        scenarioMap.push({ diff: sc.diff, label: sc.label, rank: rank });
-      });
+        scoreDiffResults.push({ diff, rank });
 
-      let rankToConditions = {};
-      scenarioMap.forEach(s => {
-        if (!rankToConditions[s.rank]) rankToConditions[s.rank] = [];
-        rankToConditions[s.rank].push(s.label);
-      });
+        if (!rankToDiffs[rank]) rankToDiffs[rank] = [];
+        rankToDiffs[rank].push(diff);
+      }
 
       const ruleText = state.rules.use25Rule 
         ? '<span class="text-xs bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded ml-2">※25%除外ルール適用中</span>'
         : '<span class="text-xs bg-gray-200 text-gray-700 font-semibold px-2 py-0.5 rounded ml-2">※25%除外ルール無し</span>';
 
-      let html = `<div class="font-bold text-gray-700 text-base mb-2 flex items-center"><span>📋 【${targetTeam}】残り試合の条件内訳一覧</span> ${ruleText}</div>`;
+      let html = `<div class="font-bold text-gray-700 text-base mb-2 flex items-center"><span>📋 【${targetTeam}】点数差別 順位到達条件一覧</span> ${ruleText}</div>`;
       
+      // 順位ごとの範囲まとめ表示
       for (let r = 1; r <= state.teams.length; r++) {
-        const conds = rankToConditions[r];
+        const diffs = rankToDiffs[r] || [];
+        const rangeText = formatDiffRangeText(diffs);
+
         let cardBg = "bg-white border-gray-200";
         let rankBadge = "bg-gray-500 text-white";
 
@@ -471,14 +498,35 @@
           <div class="p-3 border rounded-lg ${cardBg} shadow-sm flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
             <div class="flex items-center gap-2 md:w-28 flex-shrink-0">
               <span class="px-2.5 py-1 rounded-full text-xs font-bold ${rankBadge}">${r}位</span>
-              <span class="font-bold text-sm">になれる条件</span>
+              <span class="font-bold text-sm">になる条件</span>
             </div>
-            <div class="text-sm font-medium text-gray-800 flex-1">
-              ${conds ? conds.map(c => `・${c}`).join('<br>') : '<span class="text-gray-400 text-xs">※他会場の極端な結果がない限り到達不可</span>'}
+            <div class="text-sm font-extrabold text-gray-800 flex-1">
+              ${rangeText ? `・ ${rangeText}` : '<span class="text-gray-400 text-xs font-normal">※+10～-10点差の範囲では到達不可</span>'}
             </div>
           </div>
         `;
       }
+
+      // 1点ごとの詳細内訳（アコーディオン）
+      html += `
+        <details class="mt-4 bg-white rounded-lg border p-3">
+          <summary class="font-bold text-xs text-blue-600 cursor-pointer hover:underline">
+            🔍 ＋10点差～-10点差（1点単位）の全計算結果ログを開く
+          </summary>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-3 text-xs">
+            ${scoreDiffResults.map(item => {
+              let label = item.diff > 0 ? `+${item.diff}点勝` : (item.diff === 0 ? `引き分け` : `${item.diff}点負`);
+              let bg = item.rank === 1 ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-gray-50 text-gray-700';
+              return `
+                <div class="p-1.5 border rounded flex justify-between items-center ${bg}">
+                  <span class="font-semibold">${label}</span>
+                  <span class="font-bold text-blue-600">${item.rank}位</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </details>
+      `;
 
       resultDiv.innerHTML = html;
     }
