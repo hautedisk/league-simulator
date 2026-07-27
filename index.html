@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>リーグ戦 順位決定＆条件算出シミュレーター</title>
+  <title>リーグ戦 順位決定＆詳細条件算出シミュレーター</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -27,6 +27,12 @@
 
     <!-- ページ 1: 順位＆全条件算出 -->
     <div id="page-1" class="tab-content bg-white p-6 rounded-b-lg shadow-md">
+      
+      <!-- 25%ルールの適用状態ステータスバナー -->
+      <div id="rule-status-banner" class="mb-6 p-4 rounded-lg border font-bold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-sm">
+        <!-- JS動的生成 -->
+      </div>
+
       <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
         <span>📊</span> 現在の暫定順位表
       </h2>
@@ -37,11 +43,11 @@
               <th class="p-2">順位</th>
               <th class="p-2">チーム名</th>
               <th class="p-2">ポイント</th>
-              <th class="p-2">勝率/pt率</th>
+              <th class="p-2">pt取得率</th>
               <th class="p-2">得点</th>
               <th class="p-2">失点</th>
               <th class="p-2">得失点</th>
-              <th class="p-2">備考</th>
+              <th class="p-2">25%ルール状況</th>
             </tr>
           </thead>
           <tbody id="standings-table-body">
@@ -60,7 +66,7 @@
         </div>
         
         <div id="calc-result" class="space-y-4">
-          <!-- JSで全パターン結果をカード化出力 -->
+          <!-- JSで全パターン結果を出力 -->
         </div>
       </div>
     </div>
@@ -102,15 +108,20 @@
 
     <!-- ページ 3: ルール設定＆優先順位設定 -->
     <div id="page-3" class="tab-content hidden bg-white p-6 rounded-b-lg shadow-md space-y-6">
-      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-        <div class="font-bold text-yellow-800">📌 大会ルール＆優先順位カスタマイズ</div>
-        <div class="text-sm text-yellow-700 mt-1">
-          ボタンで決定基準の優先順位を自由に並び替えることができます。
-        </div>
+      
+      <div>
+        <h3 class="text-lg font-bold mb-3 border-b pb-1">① 特殊ルールのON/OFF設定</h3>
+        <label class="flex items-start gap-3 p-4 bg-gray-50 border rounded-lg cursor-pointer hover:bg-blue-50 transition">
+          <input type="checkbox" id="rule-use-25" class="w-5 h-5 mt-0.5 text-blue-600 rounded" checked onchange="toggle25Rule()">
+          <div>
+            <span class="font-bold text-gray-800 block">獲得可能ポイント25%未満チームの成績（得点・失点）を除外する</span>
+            <span class="text-xs text-gray-500">※チェックを入れると、pt取得率が25%未満のチームとの対戦スコアを順位決定用の「得失点差」「総得点」から自動的に除外します。</span>
+          </div>
+        </label>
       </div>
 
       <div>
-        <h3 class="text-lg font-bold mb-2 border-b pb-1">① 基本勝ち点設定</h3>
+        <h3 class="text-lg font-bold mb-2 border-b pb-1">② 基本勝ち点設定</h3>
         <div class="grid grid-cols-3 gap-4 max-w-md">
           <div>
             <label class="block text-xs text-gray-500 font-bold mb-1">勝ち</label>
@@ -128,7 +139,7 @@
       </div>
 
       <div>
-        <h3 class="text-lg font-bold mb-3 border-b pb-1">② 順位決定の優先順位 (上位項目が最優先)</h3>
+        <h3 class="text-lg font-bold mb-3 border-b pb-1">③ 順位決定の優先順位 (上位項目が最優先)</h3>
         <div id="priority-list" class="space-y-2 max-w-xl">
           <!-- JS動的生成 -->
         </div>
@@ -140,12 +151,11 @@
   <script>
     // --- 初期データ構造 ---
     let state = {
-      rules: { win: 2, draw: 1, loss: 0 },
-      // デフォルト優先順位
+      rules: { win: 2, draw: 1, loss: 0, use25Rule: true },
       priorityOrder: [
         { id: "pts", name: "ポイント数 (勝ち点)" },
-        { id: "subGd", name: "25%未満除外後の【得失点差】" },
-        { id: "subGf", name: "25%未満除外後の【総得点】" },
+        { id: "subGd", name: "【25%除外】適用後の得失点差" },
+        { id: "subGf", name: "【25%除外】適用後の総得点" },
         { id: "h2h", name: "当該チーム間の【直接対決結果】" },
         { id: "allGd", name: "全競技の【得失点差】" },
         { id: "allGf", name: "全競技の【総得点】" }
@@ -159,7 +169,6 @@
       }
     };
 
-    // --- 対戦カードリスト生成 ---
     function getMatchList() {
       let list = [];
       for (let i = 0; i < state.teams.length; i++) {
@@ -184,7 +193,6 @@
       return list;
     }
 
-    // --- タブ切り替え ---
     function switchTab(pageNum) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.getElementById(`page-${pageNum}`).classList.remove('hidden');
@@ -240,19 +248,21 @@
 
       Object.values(stats).forEach(s => s.allGd = s.allGf - s.allGa);
 
-      // 2. 25%未満除外判定
+      // 2. 25%未満除外の判定 (ルールが有効な場合のみ)
       let excludedTeams = [];
-      Object.values(stats).forEach(s => {
-        const maxPossiblePts = s.totalMatches * state.rules.win;
-        if (maxPossiblePts > 0) {
-          const ratio = s.pts / maxPossiblePts;
-          if (ratio < 0.25) {
-            s.isExcluded25 = true;
-            s.note = "25%未満(イ除外)";
-            excludedTeams.push(s.team);
+      if (state.rules.use25Rule) {
+        Object.values(stats).forEach(s => {
+          const maxPossiblePts = s.totalMatches * state.rules.win;
+          if (maxPossiblePts > 0) {
+            const ratio = s.pts / maxPossiblePts;
+            if (ratio < 0.25) {
+              s.isExcluded25 = true;
+              s.note = "25%未満 (対戦除外対象)";
+              excludedTeams.push(s.team);
+            }
           }
-        }
-      });
+        });
+      }
 
       // 3. 除外後集計
       matchesList.filter(m => m.played).forEach(m => {
@@ -274,8 +284,13 @@
       let sorted = Object.values(stats).sort((a, b) => {
         for (let rule of state.priorityOrder) {
           if (rule.id === "pts" && b.pts !== a.pts) return b.pts - a.pts;
-          if (rule.id === "subGd" && b.subGd !== a.subGd) return b.subGd - a.subGd;
-          if (rule.id === "subGf" && b.subGf !== a.subGf) return b.subGf - a.subGf;
+          
+          // 25%ルールが無効のときは subGd/subGf を無視（またはallGdと同じに扱う）
+          if (state.rules.use25Rule) {
+            if (rule.id === "subGd" && b.subGd !== a.subGd) return b.subGd - a.subGd;
+            if (rule.id === "subGf" && b.subGf !== a.subGf) return b.subGf - a.subGf;
+          }
+
           if (rule.id === "allGd" && b.allGd !== a.allGd) return b.allGd - a.allGd;
           if (rule.id === "allGf" && b.allGf !== a.allGf) return b.allGf - a.allGf;
           if (rule.id === "h2h") {
@@ -292,29 +307,75 @@
         return 0;
       });
 
-      return sorted;
+      return { sorted, excludedCount: excludedTeams.length };
     }
 
     // --- ページ1 表示更新 ---
     function updatePage1() {
-      const standings = calculateStandings();
+      const { sorted: standings, excludedCount } = calculateStandings();
+      
+      // 1. バナーの表示（25%ルールの適用状態）
+      const banner = document.getElementById('rule-status-banner');
+      if (!state.rules.use25Rule) {
+        banner.className = "mb-6 p-4 rounded-lg border border-gray-300 bg-gray-100 text-gray-700 font-bold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-sm";
+        banner.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-xl">⚪</span>
+            <span>【25%除外ルール】: <span class="text-gray-600">無効 (全対戦の成績を集計)</span></span>
+          </div>
+          <span class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">3ページ目で設定変更可能</span>
+        `;
+      } else if (excludedCount > 0) {
+        banner.className = "mb-6 p-4 rounded-lg border border-red-300 bg-red-50 text-red-800 font-bold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-sm";
+        banner.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-xl">⚠️</span>
+            <span>【25%除外ルール】: <span class="text-red-600 font-extrabold">適用中 (${excludedCount}チームが対象)</span></span>
+          </div>
+          <span class="text-xs bg-red-200 text-red-800 px-2.5 py-1 rounded-full">該当チームとの対戦結果を除外して集計中</span>
+        `;
+      } else {
+        banner.className = "mb-6 p-4 rounded-lg border border-green-300 bg-green-50 text-green-800 font-bold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-sm";
+        banner.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-xl">✅</span>
+            <span>【25%除外ルール】: <span class="text-green-700">有効 (現在、該当する除外対象チームはありません)</span></span>
+          </div>
+          <span class="text-xs bg-green-200 text-green-800 px-2 py-1 rounded">通常集計中</span>
+        `;
+      }
+
+      // 2. 順位表の描画
       const tbody = document.getElementById('standings-table-body');
       tbody.innerHTML = '';
 
       standings.forEach((s, idx) => {
         const maxPts = s.totalMatches * state.rules.win;
-        const rate = maxPts > 0 ? ((s.pts / maxPts) * 100).toFixed(0) + '%' : '0%';
+        const rateVal = maxPts > 0 ? (s.pts / maxPts) : 0;
+        const rateText = maxPts > 0 ? (rateVal * 100).toFixed(0) + '%' : '0%';
+
+        let noteBadge = '<span class="text-xs text-gray-400">通常対象</span>';
+        if (state.rules.use25Rule && s.isExcluded25) {
+          noteBadge = '<span class="text-xs bg-red-500 text-white font-bold px-2 py-0.5 rounded">25%未満(対戦除外)</span>';
+        }
+
+        // 表示の調整（25%ルール有効時は除外後の数値もカッコ書きで併記）
+        const displayGf = state.rules.use25Rule ? `${s.allGf} <span class="text-xs text-gray-400">(${s.subGf})</span>` : s.allGf;
+        const displayGa = state.rules.use25Rule ? `${s.allGa} <span class="text-xs text-gray-400">(${s.subGa})</span>` : s.allGa;
+        const displayGdVal = s.allGd > 0 ? '+' + s.allGd : s.allGd;
+        const subGdVal = s.subGd > 0 ? '+' + s.subGd : s.subGd;
+        const displayGd = state.rules.use25Rule ? `${displayGdVal} <span class="text-xs text-gray-400">(${subGdVal})</span>` : displayGdVal;
 
         tbody.innerHTML += `
-          <tr class="border-b hover:bg-gray-50 ${s.isExcluded25 ? 'bg-red-50 text-gray-500' : ''}">
+          <tr class="border-b hover:bg-gray-50 ${s.isExcluded25 ? 'bg-red-50/50' : ''}">
             <td class="p-2 font-bold text-center">${idx + 1}</td>
             <td class="p-2 font-semibold">${s.team}</td>
             <td class="p-2 font-bold text-blue-600">${s.pts}</td>
-            <td class="p-2 text-xs text-gray-500">${rate}</td>
-            <td class="p-2">${s.allGf} <span class="text-xs text-gray-400">(${s.subGf})</span></td>
-            <td class="p-2">${s.allGa} <span class="text-xs text-gray-400">(${s.subGa})</span></td>
-            <td class="p-2 font-medium">${s.allGd > 0 ? '+' + s.allGd : s.allGd} <span class="text-xs text-gray-400">(${s.subGd > 0 ? '+' + s.subGd : s.subGd})</span></td>
-            <td class="p-2 text-xs text-red-500 font-bold">${s.note}</td>
+            <td class="p-2 text-xs font-semibold ${rateVal < 0.25 && state.rules.use25Rule ? 'text-red-500 font-bold' : 'text-gray-500'}">${rateText}</td>
+            <td class="p-2">${displayGf}</td>
+            <td class="p-2">${displayGa}</td>
+            <td class="p-2 font-medium">${displayGd}</td>
+            <td class="p-2">${noteBadge}</td>
           </tr>
         `;
       });
@@ -327,7 +388,7 @@
       calculateAllConditions();
     }
 
-    // --- 全点数・点数差シミュレーション (詳細版) ---
+    // --- 全点数・点数差シミュレーション ---
     function calculateAllConditions() {
       const targetTeam = document.getElementById('calc-team-select').value;
       const resultDiv = document.getElementById('calc-result');
@@ -352,10 +413,7 @@
         return;
       }
 
-      // 残り1試合の各種スコア差パターンシミュレーション (-10点差敗戦 〜 +10点差勝利)
-      let scenarioMap = []; // { diff: スコア差, rank: 最終順位, label: テキスト }
-
-      // 代表的なスコア差パターン (-5 点差負け 〜 +5 点差勝利、引き分け)
+      let scenarioMap = [];
       const testDiffs = [
         { diff: 5, label: "5点差以上で大勝 (+5点差)" },
         { diff: 3, label: "3点差で勝利 (+3点差)" },
@@ -384,20 +442,22 @@
           }
         });
 
-        const rank = calculateStandings(testMatches).findIndex(s => s.team === targetTeam) + 1;
+        const rank = calculateStandings(testMatches).sorted.findIndex(s => s.team === targetTeam) + 1;
         scenarioMap.push({ diff: sc.diff, label: sc.label, rank: rank });
       });
 
-      // 順位ごとの必要条件を集計
       let rankToConditions = {};
       scenarioMap.forEach(s => {
         if (!rankToConditions[s.rank]) rankToConditions[s.rank] = [];
         rankToConditions[s.rank].push(s.label);
       });
 
-      let html = `<div class="font-bold text-gray-700 text-base mb-2">📋 【${targetTeam}】残り試合の条件内訳一覧</div>`;
+      const ruleText = state.rules.use25Rule 
+        ? '<span class="text-xs bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded ml-2">※25%除外ルール適用中</span>'
+        : '<span class="text-xs bg-gray-200 text-gray-700 font-semibold px-2 py-0.5 rounded ml-2">※25%除外ルール無し</span>';
+
+      let html = `<div class="font-bold text-gray-700 text-base mb-2 flex items-center"><span>📋 【${targetTeam}】残り試合の条件内訳一覧</span> ${ruleText}</div>`;
       
-      // 全順位について表示
       for (let r = 1; r <= state.teams.length; r++) {
         const conds = rankToConditions[r];
         let cardBg = "bg-white border-gray-200";
@@ -524,15 +584,21 @@
 
     // --- ページ3 ルール・優先順位描画 ---
     function renderPage3() {
+      document.getElementById('rule-use-25').checked = state.rules.use25Rule;
+
       const container = document.getElementById('priority-list');
       container.innerHTML = '';
 
       state.priorityOrder.forEach((item, index) => {
+        const isSubRule = item.id === "subGd" || item.id === "subGf";
+        const disabledStyle = (!state.rules.use25Rule && isSubRule) ? "opacity-40" : "";
+
         container.innerHTML += `
-          <div class="flex items-center justify-between bg-gray-50 border p-3 rounded">
+          <div class="flex items-center justify-between bg-gray-50 border p-3 rounded ${disabledStyle}">
             <div class="flex items-center gap-3">
               <span class="bg-blue-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center text-xs">${index + 1}</span>
               <span class="font-semibold text-sm">${item.name}</span>
+              ${(!state.rules.use25Rule && isSubRule) ? '<span class="text-xs text-red-400 font-normal">(25%OFFのためパス)</span>' : ''}
             </div>
             <div class="flex gap-1">
               <button onclick="movePriority(${index}, -1)" ${index === 0 ? 'disabled class="opacity-30 cursor-not-allowed px-2 py-1 bg-gray-200 text-xs rounded"' : 'class="px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-xs rounded"'}>▲ 上へ</button>
@@ -541,6 +607,11 @@
           </div>
         `;
       });
+    }
+
+    function toggle25Rule() {
+      state.rules.use25Rule = document.getElementById('rule-use-25').checked;
+      renderPage3();
     }
 
     function movePriority(index, direction) {
