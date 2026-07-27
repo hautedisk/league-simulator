@@ -3,121 +3,135 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>順位決定＆条件算出シミュレーター</title>
-  <!-- Tailwind CSS (デザイン用CDN) -->
+  <title>リーグ戦 順位決定＆条件算出シミュレーター</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800">
 
   <div class="max-w-4xl mx-auto p-4 md:p-6">
-    <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">🏆 順位決定＆条件算出シミュレーター</h1>
+    <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">🤾 順位決定＆詳細条件算出シミュレーター</h1>
 
     <!-- タブナビゲーション -->
     <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-lg overflow-hidden shadow-sm">
       <button onclick="switchTab(1)" id="tab-btn-1" class="flex-1 py-3 px-4 text-center font-bold border-b-2 border-blue-500 text-blue-600">
-        1. 順位＆条件算出
+        1. 順位＆全条件算出
       </button>
       <button onclick="switchTab(2)" id="tab-btn-2" class="flex-1 py-3 px-4 text-center font-bold text-gray-500 hover:text-gray-700">
         2. 勝敗・スコア入力
       </button>
       <button onclick="switchTab(3)" id="tab-btn-3" class="flex-1 py-3 px-4 text-center font-bold text-gray-500 hover:text-gray-700">
-        3. ルール設定
+        3. ルール＆優先順位設定
       </button>
     </div>
 
-    <!-- ページ 1: 順位＆条件算出 -->
+    <!-- ページ 1: 順位＆全条件算出 -->
     <div id="page-1" class="tab-content bg-white p-6 rounded-b-lg shadow-md">
       <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
         <span>📊</span> 現在の暫定順位表
       </h2>
       <div class="overflow-x-auto mb-8">
-        <table class="w-full text-left border-collapse">
+        <table class="w-full text-left border-collapse text-sm md:text-base">
           <thead>
             <tr class="bg-gray-100 border-b">
               <th class="p-2">順位</th>
               <th class="p-2">チーム名</th>
-              <th class="p-2">勝ち点</th>
+              <th class="p-2">ポイント</th>
+              <th class="p-2">勝率/pt率</th>
               <th class="p-2">得点</th>
               <th class="p-2">失点</th>
               <th class="p-2">得失点</th>
+              <th class="p-2">備考</th>
             </tr>
           </thead>
           <tbody id="standings-table-body">
-            <!-- JSで動的生成 -->
+            <!-- JS動的生成 -->
           </tbody>
         </table>
       </div>
 
       <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-        <span>🎯</span> 条件自動算出
+        <span>🎯</span> 残り試合の全条件パターン算出
       </h2>
       <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
         <div class="flex flex-wrap items-center gap-4 mb-4">
-          <label class="font-bold">対象チーム:</label>
-          <select id="calc-team-select" class="border rounded p-2 bg-white" onchange="calculateConditions()"></select>
-          <label class="font-bold">目標順位:</label>
-          <select id="calc-rank-select" class="border rounded p-2 bg-white" onchange="calculateConditions()">
-            <option value="1">1位以内</option>
-            <option value="2">2位以内</option>
-            <option value="3">3位以内</option>
-          </select>
+          <label class="font-bold">分析対象チーム:</label>
+          <select id="calc-team-select" class="border rounded p-2 bg-white font-semibold" onchange="calculateAllConditions()"></select>
         </div>
-        <div id="calc-result" class="text-gray-700 leading-relaxed font-semibold whitespace-pre-line">
-          <!-- JSで結果計算 -->
+        
+        <div id="calc-result" class="space-y-4">
+          <!-- JSで全パターン結果をカード化出力 -->
         </div>
       </div>
     </div>
 
     <!-- ページ 2: 勝敗・スコア入力 -->
     <div id="page-2" class="tab-content hidden bg-white p-6 rounded-b-lg shadow-md">
-      <h2 class="text-xl font-bold mb-4">👥 参加チーム</h2>
-      <div id="teams-list" class="flex flex-wrap gap-2 mb-6">
-        <!-- JSで動的生成 -->
+      <!-- チーム設定セクション -->
+      <div class="mb-8 border-b pb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold flex items-center gap-2">
+            <span>👥</span> 参加チーム設定
+          </h2>
+          <button onclick="addTeam()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1.5 px-4 rounded text-sm shadow">
+            ＋ チーム追加
+          </button>
+        </div>
+        
+        <div id="teams-inputs-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <!-- JS動的生成 -->
+        </div>
       </div>
 
-      <h2 class="text-xl font-bold mb-4">⚔️ 試合結果・未消化試合</h2>
-      <div id="matches-list" class="space-y-3">
-        <!-- JSで対戦カード入力エリア生成 -->
+      <!-- 対戦結果入力セクション -->
+      <div>
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold flex items-center gap-2">
+            <span>⚔️</span> 試合結果・スコア入力
+          </h2>
+          <button onclick="resetScores()" class="text-xs text-red-500 hover:underline">
+            スコアのみ全クリア
+          </button>
+        </div>
+        
+        <div id="matches-list" class="space-y-3">
+          <!-- JS動的生成 -->
+        </div>
       </div>
     </div>
 
-    <!-- ページ 3: ルール設定 -->
+    <!-- ページ 3: ルール設定＆優先順位設定 -->
     <div id="page-3" class="tab-content hidden bg-white p-6 rounded-b-lg shadow-md space-y-6">
+      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <div class="font-bold text-yellow-800">📌 大会ルール＆優先順位カスタマイズ</div>
+        <div class="text-sm text-yellow-700 mt-1">
+          ボタンで決定基準の優先順位を自由に並び替えることができます。
+        </div>
+      </div>
+
       <div>
-        <h3 class="text-lg font-bold mb-3 border-b pb-1">1. 勝ち点配分</h3>
-        <div class="grid grid-cols-3 gap-4">
+        <h3 class="text-lg font-bold mb-2 border-b pb-1">① 基本勝ち点設定</h3>
+        <div class="grid grid-cols-3 gap-4 max-w-md">
           <div>
-            <label class="block text-sm font-medium mb-1">勝ち</label>
-            <input type="number" id="pts-win" value="3" class="w-full border rounded p-2" onchange="saveRules()">
+            <label class="block text-xs text-gray-500 font-bold mb-1">勝ち</label>
+            <input type="number" id="pts-win" value="2" class="w-full border rounded p-2 text-center font-bold" onchange="updateRulePts()">
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1">引き分け</label>
-            <input type="number" id="pts-draw" value="1" class="w-full border rounded p-2" onchange="saveRules()">
+            <label class="block text-xs text-gray-500 font-bold mb-1">引き分け</label>
+            <input type="number" id="pts-draw" value="1" class="w-full border rounded p-2 text-center font-bold" onchange="updateRulePts()">
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1">負け</label>
-            <input type="number" id="pts-loss" value="0" class="w-full border rounded p-2" onchange="saveRules()">
+            <label class="block text-xs text-gray-500 font-bold mb-1">負け</label>
+            <input type="number" id="pts-loss" value="0" class="w-full border rounded p-2 text-center font-bold" onchange="updateRulePts()">
           </div>
         </div>
       </div>
 
       <div>
-        <h3 class="text-lg font-bold mb-3 border-b pb-1">2. 順位決定の優先順位</h3>
-        <p class="text-sm text-gray-500 mb-2">上にある項目が優先されます（ドラッグ対応は今後拡張可）。</p>
-        <ol class="list-decimal pl-5 space-y-1 font-semibold text-gray-700">
-          <li>勝ち点 (Points)</li>
-          <li>直接対決の結果 (Head-to-Head)</li>
-          <li>得失点差 (Goal Difference)</li>
-          <li>総得点 (Goals For)</li>
-        </ol>
-      </div>
-
-      <div>
-        <h3 class="text-lg font-bold mb-3 border-b pb-1">3. 特殊ルール</h3>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" id="rule-exclude-worst" class="w-5 h-5 text-blue-600 rounded" onchange="saveRules()">
-          <span class="font-medium">全敗チームとの対戦成績（得点・失点）を除外して集計する</span>
-        </label>
+        <h3 class="text-lg font-bold mb-3 border-b pb-1">② 順位決定の優先順位 (上位項目が最優先)</h3>
+        <div id="priority-list" class="space-y-2 max-w-xl">
+          <!-- JS動的生成 -->
+        </div>
       </div>
     </div>
 
@@ -126,18 +140,49 @@
   <script>
     // --- 初期データ構造 ---
     let state = {
-      rules: { win: 3, draw: 1, loss: 0, excludeWorst: false },
+      rules: { win: 2, draw: 1, loss: 0 },
+      // デフォルト優先順位
+      priorityOrder: [
+        { id: "pts", name: "ポイント数 (勝ち点)" },
+        { id: "subGd", name: "25%未満除外後の【得失点差】" },
+        { id: "subGf", name: "25%未満除外後の【総得点】" },
+        { id: "h2h", name: "当該チーム間の【直接対決結果】" },
+        { id: "allGd", name: "全競技の【得失点差】" },
+        { id: "allGf", name: "全競技の【総得点】" }
+      ],
       teams: ["チームA", "チームB", "チームC", "チームD"],
-      matches: [
-        { id: 1, home: "チームA", away: "チームB", homeScore: 2, awayScore: 1, played: true },
-        { id: 2, home: "チームC", away: "チームD", homeScore: 0, awayScore: 0, played: true },
-        { id: 3, home: "チームA", away: "チームC", homeScore: 1, awayScore: 1, played: true },
-        { id: 4, home: "チームB", away: "チームD", homeScore: 3, awayScore: 0, played: true },
-        // 未消化試合
-        { id: 5, home: "チームA", away: "チームD", homeScore: null, awayScore: null, played: false },
-        { id: 6, home: "チームB", away: "チームC", homeScore: null, awayScore: null, played: false }
-      ]
+      matchesMap: {
+        "チームA_チームB": { homeScore: 25, awayScore: 20, played: true },
+        "チームC_チームD": { homeScore: 18, awayScore: 18, played: true },
+        "チームA_チームC": { homeScore: 22, awayScore: 19, played: true },
+        "チームB_チームD": { homeScore: 30, awayScore: 10, played: true }
+      }
     };
+
+    // --- 対戦カードリスト生成 ---
+    function getMatchList() {
+      let list = [];
+      for (let i = 0; i < state.teams.length; i++) {
+        for (let j = i + 1; j < state.teams.length; j++) {
+          const home = state.teams[i];
+          const away = state.teams[j];
+          const key = `${home}_${away}`;
+          const reverseKey = `${away}_${home}`;
+
+          let matchData = state.matchesMap[key] || state.matchesMap[reverseKey] || { homeScore: null, awayScore: null, played: false };
+          
+          list.push({
+            key: key,
+            home: home,
+            away: away,
+            homeScore: matchData.homeScore,
+            awayScore: matchData.awayScore,
+            played: matchData.played
+          });
+        }
+      }
+      return list;
+    }
 
     // --- タブ切り替え ---
     function switchTab(pageNum) {
@@ -146,206 +191,377 @@
       
       [1, 2, 3].forEach(i => {
         const btn = document.getElementById(`tab-btn-${i}`);
-        if (i === pageNum) {
-          btn.className = "flex-1 py-3 px-4 text-center font-bold border-b-2 border-blue-500 text-blue-600";
-        } else {
-          btn.className = "flex-1 py-3 px-4 text-center font-bold text-gray-500 hover:text-gray-700";
-        }
+        btn.className = (i === pageNum) 
+          ? "flex-1 py-3 px-4 text-center font-bold border-b-2 border-blue-500 text-blue-600"
+          : "flex-1 py-3 px-4 text-center font-bold text-gray-500 hover:text-gray-700";
       });
 
       if (pageNum === 1) updatePage1();
+      if (pageNum === 2) renderPage2();
+      if (pageNum === 3) renderPage3();
     }
 
-    // --- 順位計算ロジック ---
-    function calculateStandings(matchesList = state.matches) {
+    // --- 順位計算コアロジック ---
+    function calculateStandings(customMatches = null) {
+      const matchesList = customMatches || getMatchList();
       let stats = {};
+      
       state.teams.forEach(t => {
-        stats[t] = { team: t, pts: 0, gf: 0, ga: 0, gd: 0, wins: 0, losses: 0, draws: 0 };
+        stats[t] = { 
+          team: t, pts: 0, totalMatches: 0,
+          allGf: 0, allGa: 0, allGd: 0,
+          subGf: 0, subGa: 0, subGd: 0,
+          isExcluded25: false, note: ""
+        };
       });
 
-      // 1. 全敗チームの特定（全敗除外ルール適用時）
-      let worstTeams = [];
-      if (state.rules.excludeWorst) {
-        let tempStats = {};
-        state.teams.forEach(t => tempStats[t] = { played: 0, wins: 0 });
-        matchesList.filter(m => m.played).forEach(m => {
-          tempStats[m.home].played++;
-          tempStats[m.away].played++;
-          if (m.homeScore > m.awayScore) tempStats[m.home].wins++;
-          if (m.awayScore > m.homeScore) tempStats[m.away].wins++;
-        });
-        worstTeams = state.teams.filter(t => tempStats[t].played > 0 && tempStats[t].wins === 0);
-      }
-
-      // 2. 集計
+      // 1. 全試合集計
       matchesList.filter(m => m.played).forEach(m => {
-        const h = m.home;
-        const a = m.away;
+        const h = m.home, a = m.away;
+        if (!stats[h] || !stats[a]) return;
 
-        // 全敗除外対象のチェック
-        const ignoreForStats = state.rules.excludeWorst && (worstTeams.includes(h) || worstTeams.includes(a));
+        stats[h].totalMatches++;
+        stats[a].totalMatches++;
+
+        stats[h].allGf += m.homeScore; stats[h].allGa += m.awayScore;
+        stats[a].allGf += m.awayScore; stats[a].allGa += m.homeScore;
 
         if (m.homeScore > m.awayScore) {
           stats[h].pts += state.rules.win;
           stats[a].pts += state.rules.loss;
-          stats[h].wins++; stats[a].losses++;
         } else if (m.homeScore < m.awayScore) {
           stats[a].pts += state.rules.win;
           stats[h].pts += state.rules.loss;
-          stats[a].wins++; stats[h].losses++;
         } else {
           stats[h].pts += state.rules.draw;
           stats[a].pts += state.rules.draw;
-          stats[h].draws++; stats[a].draws++;
-        }
-
-        if (!ignoreForStats) {
-          stats[h].gf += m.homeScore; stats[h].ga += m.awayScore;
-          stats[a].gf += m.awayScore; stats[a].ga += m.homeScore;
         }
       });
 
-      Object.values(stats).forEach(s => s.gd = s.gf - s.ga);
+      Object.values(stats).forEach(s => s.allGd = s.allGf - s.allGa);
 
-      // 3. ソート（勝ち点 -> 直接対決 -> 得失点 -> 総得点）
-      let sorted = Object.values(stats).sort((a, b) => {
-        if (b.pts !== a.pts) return b.pts - a.pts;
-
-        // 直接対決判定 (2チームの場合)
-        const h2h = matchesList.find(m => m.played && 
-          ((m.home === a.team && m.away === b.team) || (m.home === b.team && m.away === a.team))
-        );
-        if (h2h && h2h.homeScore !== h2h.awayScore) {
-          const aScore = h2h.home === a.team ? h2h.homeScore : h2h.awayScore;
-          const bScore = h2h.home === b.team ? h2h.homeScore : h2h.awayScore;
-          if (aScore !== bScore) return bScore - aScore;
+      // 2. 25%未満除外判定
+      let excludedTeams = [];
+      Object.values(stats).forEach(s => {
+        const maxPossiblePts = s.totalMatches * state.rules.win;
+        if (maxPossiblePts > 0) {
+          const ratio = s.pts / maxPossiblePts;
+          if (ratio < 0.25) {
+            s.isExcluded25 = true;
+            s.note = "25%未満(イ除外)";
+            excludedTeams.push(s.team);
+          }
         }
+      });
 
-        if (b.gd !== a.gd) return b.gd - a.gd;
-        return b.gf - a.gf;
+      // 3. 除外後集計
+      matchesList.filter(m => m.played).forEach(m => {
+        const h = m.home, a = m.away;
+        if (!stats[h] || !stats[a]) return;
+
+        if (!excludedTeams.includes(a)) {
+          stats[h].subGf += m.homeScore;
+          stats[h].subGa += m.awayScore;
+        }
+        if (!excludedTeams.includes(h)) {
+          stats[a].subGf += m.awayScore;
+          stats[a].subGa += m.homeScore;
+        }
+      });
+      Object.values(stats).forEach(s => s.subGd = s.subGf - s.subGa);
+
+      // 4. カスタム動的ソート
+      let sorted = Object.values(stats).sort((a, b) => {
+        for (let rule of state.priorityOrder) {
+          if (rule.id === "pts" && b.pts !== a.pts) return b.pts - a.pts;
+          if (rule.id === "subGd" && b.subGd !== a.subGd) return b.subGd - a.subGd;
+          if (rule.id === "subGf" && b.subGf !== a.subGf) return b.subGf - a.subGf;
+          if (rule.id === "allGd" && b.allGd !== a.allGd) return b.allGd - a.allGd;
+          if (rule.id === "allGf" && b.allGf !== a.allGf) return b.allGf - a.allGf;
+          if (rule.id === "h2h") {
+            const h2h = matchesList.find(m => m.played && 
+              ((m.home === a.team && m.away === b.team) || (m.home === b.team && m.away === a.team))
+            );
+            if (h2h && h2h.homeScore !== h2h.awayScore) {
+              const aScore = h2h.home === a.team ? h2h.homeScore : h2h.awayScore;
+              const bScore = h2h.home === b.team ? h2h.homeScore : h2h.awayScore;
+              if (aScore !== bScore) return bScore - aScore;
+            }
+          }
+        }
+        return 0;
       });
 
       return sorted;
     }
 
-    // --- ページ1表示更新 ---
+    // --- ページ1 表示更新 ---
     function updatePage1() {
       const standings = calculateStandings();
       const tbody = document.getElementById('standings-table-body');
       tbody.innerHTML = '';
 
       standings.forEach((s, idx) => {
+        const maxPts = s.totalMatches * state.rules.win;
+        const rate = maxPts > 0 ? ((s.pts / maxPts) * 100).toFixed(0) + '%' : '0%';
+
         tbody.innerHTML += `
-          <tr class="border-b hover:bg-gray-50">
-            <td class="p-2 font-bold">${idx + 1}</td>
-            <td class="p-2">${s.team}</td>
+          <tr class="border-b hover:bg-gray-50 ${s.isExcluded25 ? 'bg-red-50 text-gray-500' : ''}">
+            <td class="p-2 font-bold text-center">${idx + 1}</td>
+            <td class="p-2 font-semibold">${s.team}</td>
             <td class="p-2 font-bold text-blue-600">${s.pts}</td>
-            <td class="p-2">${s.gf}</td>
-            <td class="p-2">${s.ga}</td>
-            <td class="p-2">${s.gd > 0 ? '+' + s.gd : s.gd}</td>
+            <td class="p-2 text-xs text-gray-500">${rate}</td>
+            <td class="p-2">${s.allGf} <span class="text-xs text-gray-400">(${s.subGf})</span></td>
+            <td class="p-2">${s.allGa} <span class="text-xs text-gray-400">(${s.subGa})</span></td>
+            <td class="p-2 font-medium">${s.allGd > 0 ? '+' + s.allGd : s.allGd} <span class="text-xs text-gray-400">(${s.subGd > 0 ? '+' + s.subGd : s.subGd})</span></td>
+            <td class="p-2 text-xs text-red-500 font-bold">${s.note}</td>
           </tr>
         `;
       });
 
-      // チーム選択オプション設定
       const teamSelect = document.getElementById('calc-team-select');
+      const prevTeam = teamSelect.value;
       teamSelect.innerHTML = state.teams.map(t => `<option value="${t}">${t}</option>`).join('');
-      calculateConditions();
+      if (state.teams.includes(prevTeam)) teamSelect.value = prevTeam;
+
+      calculateAllConditions();
     }
 
-    // --- 条件自動算出 (シミュレーション) ---
-    function calculateConditions() {
+    // --- 全点数・点数差シミュレーション (詳細版) ---
+    function calculateAllConditions() {
       const targetTeam = document.getElementById('calc-team-select').value;
-      const targetRank = parseInt(document.getElementById('calc-rank-select').value);
       const resultDiv = document.getElementById('calc-result');
 
-      const unplayed = state.matches.filter(m => !m.played);
+      if (!targetTeam || !state.teams.includes(targetTeam)) {
+        resultDiv.innerHTML = "チームを選択してください。";
+        return;
+      }
+
+      const matchList = getMatchList();
+      const unplayed = matchList.filter(m => !m.played);
+
       if (unplayed.length === 0) {
-        resultDiv.innerText = "すべての試合が終了しています。";
+        resultDiv.innerHTML = "<div class='bg-white p-4 rounded text-center text-gray-500'>全試合終了済です。上記の順位表が最終結果となります。</div>";
         return;
       }
 
-      // 簡易シミュレーション: 対象チームの残りの結果パターンを検証
-      let winCountNeeded = 0;
-      let conditions = [];
-
-      // 全未消化試合の勝ち・引き分け・負けパターンを試行
-      // （※プロトタイプ用に主要結果パターンのみチェック）
-      let canReach = false;
+      const myUnplayed = unplayed.filter(m => m.home === targetTeam || m.away === targetTeam);
       
-      // 自チームが関係する残り試合を取得
-      const myMatches = unplayed.filter(m => m.home === targetTeam || m.away === targetTeam);
-      
-      if (myMatches.length === 0) {
-        resultDiv.innerText = "選択したチームには未消化の試合がありません。";
+      if (myUnplayed.length === 0) {
+        resultDiv.innerHTML = `<div class='bg-white p-4 rounded text-center text-gray-600'><strong>${targetTeam}</strong> は残り試合がありません（他会場の結果待ち）。</div>`;
         return;
       }
 
-      // 自チーム勝利パターンでシミュレーション
-      let testMatches = JSON.parse(JSON.stringify(state.matches));
-      myMatches.forEach(m => {
-        const match = testMatches.find(tm => tm.id === m.id);
-        match.played = true;
-        if (match.home === targetTeam) { match.homeScore = 1; match.awayScore = 0; }
-        else { match.homeScore = 0; match.awayScore = 1; }
+      // 残り1試合の各種スコア差パターンシミュレーション (-10点差敗戦 〜 +10点差勝利)
+      let scenarioMap = []; // { diff: スコア差, rank: 最終順位, label: テキスト }
+
+      // 代表的なスコア差パターン (-5 点差負け 〜 +5 点差勝利、引き分け)
+      const testDiffs = [
+        { diff: 5, label: "5点差以上で大勝 (+5点差)" },
+        { diff: 3, label: "3点差で勝利 (+3点差)" },
+        { diff: 2, label: "2点差で勝利 (+2点差)" },
+        { diff: 1, label: "1点差で接戦勝ち (+1点差)" },
+        { diff: 0, label: "引き分け (0点差)" },
+        { diff: -1, label: "1点差で接戦負け (-1点差)" },
+        { diff: -2, label: "2点差で敗戦 (-2点差)" },
+        { diff: -5, label: "5点差以上で大敗 (-5点差)" }
+      ];
+
+      testDiffs.forEach(sc => {
+        let testMatches = JSON.parse(JSON.stringify(matchList));
+        
+        myUnplayed.forEach(m => {
+          let tm = testMatches.find(x => x.key === m.key);
+          tm.played = true;
+          const baseScore = 20;
+          if (sc.diff >= 0) {
+            if (tm.home === targetTeam) { tm.homeScore = baseScore + sc.diff; tm.awayScore = baseScore; }
+            else { tm.homeScore = baseScore; tm.awayScore = baseScore + sc.diff; }
+          } else {
+            const lossVal = Math.abs(sc.diff);
+            if (tm.home === targetTeam) { tm.homeScore = baseScore; tm.awayScore = baseScore + lossVal; }
+            else { tm.homeScore = baseScore + lossVal; tm.awayScore = baseScore; }
+          }
+        });
+
+        const rank = calculateStandings(testMatches).findIndex(s => s.team === targetTeam) + 1;
+        scenarioMap.push({ diff: sc.diff, label: sc.label, rank: rank });
       });
 
-      let res = calculateStandings(testMatches);
-      let rankIfWin = res.findIndex(s => s.team === targetTeam) + 1;
+      // 順位ごとの必要条件を集計
+      let rankToConditions = {};
+      scenarioMap.forEach(s => {
+        if (!rankToConditions[s.rank]) rankToConditions[s.rank] = [];
+        rankToConditions[s.rank].push(s.label);
+      });
 
-      if (rankIfWin <= targetRank) {
-        conditions.push(`✅ **勝利した場合**: ${rankIfWin}位以内が確定（または濃厚）です！`);
-      } else {
-        conditions.push(`⚠️ **勝利した場合でも**: 他会場の結果次第では${targetRank}位に入れない可能性があります。`);
+      let html = `<div class="font-bold text-gray-700 text-base mb-2">📋 【${targetTeam}】残り試合の条件内訳一覧</div>`;
+      
+      // 全順位について表示
+      for (let r = 1; r <= state.teams.length; r++) {
+        const conds = rankToConditions[r];
+        let cardBg = "bg-white border-gray-200";
+        let rankBadge = "bg-gray-500 text-white";
+
+        if (r === 1) { cardBg = "bg-amber-50 border-amber-300"; rankBadge = "bg-amber-500 text-white"; }
+        else if (r === 2) { cardBg = "bg-slate-50 border-slate-300"; rankBadge = "bg-slate-500 text-white"; }
+        else if (r === 3) { cardBg = "bg-orange-50 border-orange-300"; rankBadge = "bg-orange-600 text-white"; }
+
+        html += `
+          <div class="p-3 border rounded-lg ${cardBg} shadow-sm flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+            <div class="flex items-center gap-2 md:w-28 flex-shrink-0">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold ${rankBadge}">${r}位</span>
+              <span class="font-bold text-sm">になれる条件</span>
+            </div>
+            <div class="text-sm font-medium text-gray-800 flex-1">
+              ${conds ? conds.map(c => `・${c}`).join('<br>') : '<span class="text-gray-400 text-xs">※他会場の極端な結果がない限り到達不可</span>'}
+            </div>
+          </div>
+        `;
       }
 
-      resultDiv.innerHTML = conditions.join('<br>');
+      resultDiv.innerHTML = html;
     }
 
-    // --- ページ2入力画面の生成 ---
+    // --- ページ2 画面生成・制御 ---
     function renderPage2() {
-      // チーム表示
-      document.getElementById('teams-list').innerHTML = state.teams.map(t => 
-        `<span class="bg-gray-200 px-3 py-1 rounded-full text-sm font-semibold">${t}</span>`
-      ).join('');
-
-      // 試合結果入力フォーム
-      const container = document.getElementById('matches-list');
+      const container = document.getElementById('teams-inputs-container');
       container.innerHTML = '';
 
-      state.matches.forEach((m, idx) => {
+      state.teams.forEach((teamName, index) => {
         container.innerHTML += `
+          <div class="flex items-center gap-2 bg-gray-50 p-2 rounded border">
+            <span class="text-xs text-gray-400 font-bold w-4">${index + 1}</span>
+            <input type="text" value="${teamName}" class="border rounded p-1 text-sm flex-1 font-medium" onchange="updateTeamName(${index}, this.value)">
+            ${state.teams.length > 2 ? `
+              <button onclick="removeTeam(${index})" class="text-red-400 hover:text-red-600 font-bold px-2 text-sm" title="チーム削除">×</button>
+            ` : ''}
+          </div>
+        `;
+      });
+
+      const matchesContainer = document.getElementById('matches-list');
+      matchesContainer.innerHTML = '';
+
+      const matchList = getMatchList();
+      matchList.forEach((m) => {
+        matchesContainer.innerHTML += `
           <div class="flex items-center justify-between bg-gray-50 p-3 rounded border">
-            <span class="w-1/3 text-right font-medium">${m.home}</span>
+            <span class="w-1/3 text-right font-medium text-sm md:text-base">${m.home}</span>
             <div class="flex items-center gap-2">
-              <input type="number" value="${m.homeScore ?? ''}" placeholder="-" class="w-12 text-center border rounded p-1" onchange="updateMatch(${m.id}, 'home', this.value)">
-              <span>-</span>
-              <input type="number" value="${m.awayScore ?? ''}" placeholder="-" class="w-12 text-center border rounded p-1" onchange="updateMatch(${m.id}, 'away', this.value)">
+              <input type="number" value="${m.homeScore ?? ''}" placeholder="-" class="w-12 text-center border rounded p-1 text-sm md:text-base font-semibold" onchange="updateScore('${m.key}', 'home', this.value)">
+              <span class="font-bold text-gray-400">-</span>
+              <input type="number" value="${m.awayScore ?? ''}" placeholder="-" class="w-12 text-center border rounded p-1 text-sm md:text-base font-semibold" onchange="updateScore('${m.key}', 'away', this.value)">
             </div>
-            <span class="w-1/3 text-left font-medium">${m.away}</span>
+            <span class="w-1/3 text-left font-medium text-sm md:text-base">${m.away}</span>
           </div>
         `;
       });
     }
 
-    function updateMatch(id, team, val) {
-      const match = state.matches.find(m => m.id === id);
-      if (team === 'home') match.homeScore = val !== '' ? parseInt(val) : null;
-      if (team === 'away') match.awayScore = val !== '' ? parseInt(val) : null;
+    function updateTeamName(index, newName) {
+      newName = newName.trim();
+      if (!newName) return renderPage2();
+      const oldName = state.teams[index];
+      if (oldName === newName) return;
+      if (state.teams.includes(newName)) {
+        alert("同名のチームが既に存在します。");
+        return renderPage2();
+      }
+      state.teams[index] = newName;
+
+      let newMatchesMap = {};
+      Object.keys(state.matchesMap).forEach(key => {
+        let [h, a] = key.split('_');
+        if (h === oldName) h = newName;
+        if (a === oldName) a = newName;
+        newMatchesMap[`${h}_${a}`] = state.matchesMap[key];
+      });
+      state.matchesMap = newMatchesMap;
+
+      renderPage2();
+    }
+
+    function addTeam() {
+      const newName = `チーム${String.fromCharCode(65 + state.teams.length)}`;
+      state.teams.push(newName);
+      renderPage2();
+    }
+
+    function removeTeam(index) {
+      if (state.teams.length <= 2) return;
+      const targetName = state.teams[index];
+      state.teams.splice(index, 1);
+
+      let newMatchesMap = {};
+      Object.keys(state.matchesMap).forEach(key => {
+        let [h, a] = key.split('_');
+        if (h !== targetName && a !== targetName) {
+          newMatchesMap[key] = state.matchesMap[key];
+        }
+      });
+      state.matchesMap = newMatchesMap;
+
+      renderPage2();
+    }
+
+    function updateScore(key, side, val) {
+      if (!state.matchesMap[key]) {
+        state.matchesMap[key] = { homeScore: null, awayScore: null, played: false };
+      }
+      const match = state.matchesMap[key];
+      if (side === 'home') match.homeScore = val !== '' ? parseInt(val) : null;
+      if (side === 'away') match.awayScore = val !== '' ? parseInt(val) : null;
       match.played = match.homeScore !== null && match.awayScore !== null;
     }
 
-    // --- ページ3設定更新 ---
-    function saveRules() {
+    function resetScores() {
+      if (confirm("全ての入力済みスコアをクリアしますか？")) {
+        state.matchesMap = {};
+        renderPage2();
+      }
+    }
+
+    // --- ページ3 ルール・優先順位描画 ---
+    function renderPage3() {
+      const container = document.getElementById('priority-list');
+      container.innerHTML = '';
+
+      state.priorityOrder.forEach((item, index) => {
+        container.innerHTML += `
+          <div class="flex items-center justify-between bg-gray-50 border p-3 rounded">
+            <div class="flex items-center gap-3">
+              <span class="bg-blue-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center text-xs">${index + 1}</span>
+              <span class="font-semibold text-sm">${item.name}</span>
+            </div>
+            <div class="flex gap-1">
+              <button onclick="movePriority(${index}, -1)" ${index === 0 ? 'disabled class="opacity-30 cursor-not-allowed px-2 py-1 bg-gray-200 text-xs rounded"' : 'class="px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-xs rounded"'}>▲ 上へ</button>
+              <button onclick="movePriority(${index}, 1)" ${index === state.priorityOrder.length - 1 ? 'disabled class="opacity-30 cursor-not-allowed px-2 py-1 bg-gray-200 text-xs rounded"' : 'class="px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-xs rounded"'}>▼ 下へ</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function movePriority(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= state.priorityOrder.length) return;
+
+      const temp = state.priorityOrder[index];
+      state.priorityOrder[index] = state.priorityOrder[targetIndex];
+      state.priorityOrder[targetIndex] = temp;
+
+      renderPage3();
+    }
+
+    function updateRulePts() {
       state.rules.win = parseInt(document.getElementById('pts-win').value) || 0;
       state.rules.draw = parseInt(document.getElementById('pts-draw').value) || 0;
       state.rules.loss = parseInt(document.getElementById('pts-loss').value) || 0;
-      state.rules.excludeWorst = document.getElementById('rule-exclude-worst').checked;
     }
 
     // --- 初期化 ---
-    renderPage2();
-    updatePage1();
+    switchTab(1);
   </script>
 </body>
 </html>
